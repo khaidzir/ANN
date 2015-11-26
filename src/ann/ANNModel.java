@@ -18,7 +18,7 @@ public class ANNModel {
     private ArrayList<ArrayList<Node>> layers;
     private Map<Node, Map<Node, Double>> weightMap;
     private ArrayList<Double> biases;
-    private ArrayList<Double> biasesWeight;
+    private Map<Integer, Map<Node, Double>> biasesWeight;
     
     private double[][] tempTable, errorTable;
     private double learningRate;
@@ -27,7 +27,7 @@ public class ANNModel {
     private ArrayList<Data> trainingSet;
     
     public ANNModel(ArrayList<ArrayList<Node>> layers, Map<Node, Map<Node, Double>> weight, 
-                    ArrayList<Double> bias, ArrayList<Double> bWeight) {
+                    ArrayList<Double> bias, Map<Integer, Map<Node, Double>> bWeight) {
         this.layers = layers;
         this.weightMap = weight;
         this.biases = bias;
@@ -68,7 +68,7 @@ public class ANNModel {
                 tempTable[0][i] += input.get(j) * weightMap.get(layers.get(0).get(j)).get(layers.get(1).get(i));
             }
 //            System.out.println(biases.get(0)+" * "+ biasesWeight.get(b));
-            tempTable[0][i] += biases.get(0)*biasesWeight.get(b);
+            tempTable[0][i] += biases.get(0)*biasesWeight.get(0).get(layers.get(1).get(i));
 //            System.out.println("Hasil 1 : " + tempTable[0][i]);
             b++;
             tempTable[0][i] = sigmoidFunc(tempTable[0][i]);
@@ -84,7 +84,7 @@ public class ANNModel {
                     tempTable[k][i] += tempTable[k-1][j] * weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i));
                 }
 //                System.out.println(biases.get(k)+" * "+ biasesWeight.get(b));
-                tempTable[k][i] += biases.get(k)*biasesWeight.get(b);
+                tempTable[k][i] += biases.get(k)*biasesWeight.get(k).get(layers.get(k+1).get(i));
 //                System.out.println("Hasil 1 : " + tempTable[k][i]);
                 b++;
                 tempTable[k][i] = sigmoidFunc(tempTable[k][i]);
@@ -144,6 +144,17 @@ public class ANNModel {
                     }
                 }
             }
+            
+            // Update weight bias
+            for(int k=0; k<layers.size()-1; k++) {
+                for(int i=0; i<layers.get(k).size(); i++) {
+                    for(int j=0; j<layers.get(k+1).size(); j++) {
+                        dW = learningRate * errorTable[k][j] * biases.get(k);
+                        output = biasesWeight.get(k).get(layers.get(k+1).get(j));
+                        biasesWeight.get(k).replace(layers.get(k+1).get(j), output+dW);
+                    }
+                }
+            }
         }
         error /= 2;
         System.out.println("Error sekarang : " + error);
@@ -151,14 +162,20 @@ public class ANNModel {
     
     public void print() {
         //////////////////////////////////////////////////////////////////////
+        System.out.println("Node : ");
         for(Map.Entry<Node, Map<Node, Double>> me : weightMap.entrySet()) {
             Map<Node, Double> map = me.getValue();
             for(Map.Entry<Node, Double> en : map.entrySet()) {
                 System.out.println(me.getKey().getID() + " - " + en.getKey().getID() + " : " + en.getValue());
             }
         }
-        for(double d : biasesWeight) {
-            System.out.println(d);
+        
+        System.out.println("Bias : ");
+        for(Map.Entry<Integer, Map<Node, Double>> me : biasesWeight.entrySet()) {
+            Map<Node, Double> map = me.getValue();
+            for(Map.Entry<Node, Double> en : map.entrySet()) {
+                System.out.println(me.getKey() + " - " + en.getKey().getID() + " : " + en.getValue());
+            }
         }
         //////////////////////////////////////////////////////////////////////
     }
@@ -222,12 +239,25 @@ public class ANNModel {
         bias.add(1.0);
         bias.add(1.0);
         
-        // bobot bias
+        // daftar bobot bias
         ArrayList<Double> listWeightBias = new ArrayList<>();
         listWeightBias.add(0.35);
         listWeightBias.add(0.35);
         listWeightBias.add(0.60);
         listWeightBias.add(0.60);
+        
+        // Bobot bias
+        Map<Integer, Map<Node, Double>> biasesWeight = new HashMap<>();
+        i=0;
+        for(int j=0; j<layers.size()-1; j++) {
+            ArrayList<Node> arrNode = layers.get(j+1);
+            Map<Node, Double> map = new HashMap<>();
+            for(Node node : arrNode) {                
+                map.put(node, listWeightBias.get(i));
+                i++;
+            }
+            biasesWeight.put(j, map);            
+        }
         
         // map weight
         Map<Node, Map<Node, Double>> mapWeight = new HashMap<>();
@@ -246,7 +276,7 @@ public class ANNModel {
             }
         }
         
-        ANNModel annModel = new ANNModel(layers, mapWeight, bias, listWeightBias);
+        ANNModel annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
         ArrayList<Double> input = new ArrayList<>();
         input.add(0.05);
         input.add(0.10);
@@ -254,6 +284,7 @@ public class ANNModel {
         for(Double d : arr) {
             System.out.println(d);
         }
+        annModel.print();
     }
     
     public static void coba2() {
@@ -307,12 +338,25 @@ public class ANNModel {
         bias.add(1.0);
         bias.add(1.0);
         
-        // bobot bias
+        // daftar bobot bias
         ArrayList<Double> listWeightBias = new ArrayList<>();
         listWeightBias.add(0.35);
         listWeightBias.add(0.35);
         listWeightBias.add(0.60);
         listWeightBias.add(0.60);
+        
+        // Bobot bias
+        Map<Integer, Map<Node, Double>> biasesWeight = new HashMap<>();
+        i=0;
+        for(int j=0; j<layers.size()-1; j++) {
+            ArrayList<Node> arrNode = layers.get(j+1);
+            Map<Node, Double> map = new HashMap<>();
+            for(Node node : arrNode) {                
+                map.put(node, listWeightBias.get(i));
+                i++;
+            }
+            biasesWeight.put(j, map);            
+        }
         
         // map weight
         Map<Node, Map<Node, Double>> mapWeight = new HashMap<>();
@@ -331,7 +375,7 @@ public class ANNModel {
             }
         }
         
-        ANNModel annModel = new ANNModel(layers, mapWeight, bias, listWeightBias);
+        ANNModel annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
         ArrayList<Double> input = new ArrayList<>();
         input.add(0.05);
         input.add(0.10);
