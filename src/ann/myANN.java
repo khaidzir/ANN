@@ -34,24 +34,40 @@ public class myANN extends Classifier{
     public static final char SIGN_FUNCTION = 7;
     public static final char SIGMOID_FUNCTION = 8;
     
-    // apakah menggunakan momentum atau tidak
-    public static final char ENABLE_MOMENTUM = 9;
-    public static final char DISABLE_MOMENTUM = 10;
-    
     // jenis terminasi yang digunakan, deltaMSE atau maxIteration
-    public static final char TERMINATE_MSE = 11;
-    public static final char TERMINATE_MAX_ITERATION = 12;
+    public static final char TERMINATE_MSE = 9;
+    public static final char TERMINATE_MAX_ITERATION = 10;
     
     /**
-     * Daftar variabel yang digunakan untuk perhitungan
+     * Daftar variabel yang digunakan untuk perhitungan dan parameter
      */
-    private double learningRate;
-    private double momentum;
-    private double deltaMSE;    // input deltaMSE untuk terminasi
-    private int maxIteration;   // input maxIteration untuk terminasi
-    private double threshold;   // input threshold untuk fungsi aktivasi sign dan step
+    private double learningRate = 0.3;
+    private double momentum = 0.2;
+    private double deltaMSE = 0.01;    // input deltaMSE untuk terminasi
+    private int maxIteration = 500;   // input maxIteration untuk terminasi
+    private double threshold = 0.0;   // input threshold untuk fungsi aktivasi sign dan step
+    private char topology = ONE_PERCEPTRON;
+    private char learningRule = SIMPLE_PERCEPTRON;
+    private char activationFunction = SIGMOID_FUNCTION;
+    private char terminationCondition = TERMINATE_MSE;
+    private boolean isInitialWeightSet = false;
 
-        /**
+    ////////////////////////////////
+    ////     Setter-Getter      ////
+    ////    untuk parameter     ////
+    ////////////////////////////////
+    
+    /**
+     * mengatur nilai weight awal 
+     * @param _weight nilai weight awal
+     */
+    public void setInitialWeight(double[] _weight) {
+        isInitialWeightSet = true;
+        // TODO : set masing2 weight
+    }
+
+    /**
+     * mendapatkan nilai learningRate
      * @return the learningRate
      */
     public double getLearningRate() {
@@ -59,6 +75,8 @@ public class myANN extends Classifier{
     }
 
     /**
+     * mengatur nilai learningRate
+     * default = 0.3
      * @param learningRate the learningRate to set
      */
     public void setLearningRate(double learningRate) {
@@ -66,6 +84,82 @@ public class myANN extends Classifier{
     }
 
     /**
+     * mendapatkan topologi yang sedang digunakan
+     * @return the topology
+     */
+    public char getTopology() {
+        return topology;
+    }
+
+    /**
+     * mengatur topologi yang akan digunakan
+     * (default) ONE_PERCEPTRON untuk topologi 1perceptron
+     * MULTILAYER_PERCEPTRON untuk topologi MLP
+     * @param topology the topology to set
+     */
+    public void setTopology(char topology) {
+        this.topology = topology;
+    }
+
+    /**
+     * mendapatkan info learning rule yang digunakan
+     * @return the learningRule
+     */
+    public char getLearningRule() {
+        return learningRule;
+    }
+
+    /**
+     * mengatur learning rule yang akan digunakan
+     * untuk topologi 1perceptron
+     * (default) SIMPLE_PERCEPTRON = 1perceptron biasa
+     * BATCH_GRADIENT_DESCENT = batch gradient descent
+     * DELTA_RULE = delta rule
+     * @param learningRule the learningRule to set
+     */
+    public void setLearningRule(char learningRule) {
+        this.learningRule = learningRule;
+    }
+
+    /**
+     * mendapatkan info fungsi aktivasi per neuron yang digunakan
+     * @return the activationFunction
+     */
+    public char getActivationFunction() {
+        return activationFunction;
+    }
+
+    /**
+     * mengatur fungsi aktivasi untuk setiap neuron
+     * (default) SIGMOID_FUNCTION = fungsi sigmoid
+     * STEP_FUNCTION = fungsi step (0, 1)
+     * SIGN_FUNCTION = fungsi sign (-1, 1)
+     * @param activationFunction the activationFunction to set
+     */
+    public void setActivationFunction(char activationFunction) {
+        this.activationFunction = activationFunction;
+    }
+
+    /**
+     * mendapatkan info terminasi yang digunakan
+     * @return the terminationCondition
+     */
+    public char getTerminationCondition() {
+        return terminationCondition;
+    }
+
+    /**
+     * mengatur kondisi terminasi
+     * (default) TERMINATE_MSE = terminasi menggunakan MSE, gunakan dengan method setDeltaMSE(double)
+     * TERMINATE_MAX_ITERATION = terminasi berdasarkan jumlah iterasi, gunakan dengan method setMaxIteration(int)
+     * @param terminationCondition the terminationCondition to set
+     */
+    public void setTerminationCondition(char terminationCondition) {
+        this.terminationCondition = terminationCondition;
+    }
+
+    /**
+     * mendapatkan besar momentum
      * @return the momentum
      */
     public double getMomentum() {
@@ -73,6 +167,7 @@ public class myANN extends Classifier{
     }
 
     /**
+     * mengatur besa momentum, default 0.2
      * @param momentum the momentum to set
      */
     public void setMomentum(double momentum) {
@@ -80,6 +175,7 @@ public class myANN extends Classifier{
     }
 
     /**
+     * mendapatkan nilai error minimal untuk terminasi
      * @return the deltaMSE
      */
     public double getDeltaMSE() {
@@ -87,6 +183,8 @@ public class myANN extends Classifier{
     }
 
     /**
+     * mengatur nilai error minimal untuk terminasi, default 0.01
+     * terminationCondition = TEMRINATE_MSE
      * @param deltaMSE the deltaMSE to set
      */
     public void setDeltaMSE(double deltaMSE) {
@@ -94,6 +192,7 @@ public class myANN extends Classifier{
     }
 
     /**
+     * mendapatkan nilai jumlah iterasi maksimal
      * @return the maxIteration
      */
     public int getMaxIteration() {
@@ -101,6 +200,7 @@ public class myANN extends Classifier{
     }
 
     /**
+     * mengatur nilai maksimal iterasi, default 500
      * @param maxIteration the maxIteration to set
      */
     public void setMaxIteration(int maxIteration) {
@@ -108,6 +208,7 @@ public class myANN extends Classifier{
     }
 
     /**
+     * mendapatkan nilai threshold yang digunakan untuk fungsi aktivasi
      * @return the threshold
      */
     public double getThreshold() {
@@ -115,11 +216,18 @@ public class myANN extends Classifier{
     }
 
     /**
+     * mengatur nilai threshold yang digunakan untuk 
+     * fungsi aktivasi STEP dan SIGN, default 0.0
      * @param threshold the threshold to set
      */
     public void setThreshold(double threshold) {
         this.threshold = threshold;
     }
+ 
+    ////////////////////////////////////
+    ////       Fungsi utama         ////
+    ////  Klasifikasi dan Prediksi  ////
+    ////////////////////////////////////
     
     /**
      * Mengembalikan default capability dari ANN
@@ -169,6 +277,10 @@ public class myANN extends Classifier{
         return retArray;
     }
     
+    ///////////////////////////////////////////////////////
+    ////    Fungsi yang digunakan untuk perhitungan    ////
+    ///////////////////////////////////////////////////////
+    
     /**
      * Mengembalikan nilai 1 jika input di atas atau sama dengan threshold
      * dan mengembalikan nilai -1 jika di bawah threshold
@@ -211,5 +323,5 @@ public class myANN extends Classifier{
         return 1.0/(1.0+Math.exp(-_value));
     }
 
-
+    
 }
