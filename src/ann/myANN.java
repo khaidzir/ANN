@@ -5,6 +5,7 @@
  */
 package ann;
 
+import java.util.ArrayList;
 import weka.classifiers.Classifier;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
@@ -51,6 +52,8 @@ public class myANN extends Classifier{
     private char activationFunction = SIGMOID_FUNCTION;
     private char terminationCondition = TERMINATE_MSE;
     private boolean isInitialWeightSet = false;
+    private int[] nbLayers;     // jumlah layer dan jumlah node setiap layer
+    private double[] weights;
 
     ////////////////////////////////
     ////     Setter-Getter      ////
@@ -64,8 +67,25 @@ public class myANN extends Classifier{
     public void setInitialWeight(double[] _weight) {
         isInitialWeightSet = true;
         // TODO : set masing2 weight
+        weights = _weight;
     }
 
+    /**
+     * mendapatkan jumlah masing-masing node setiap layer dan jumlah layer
+     * @return the nbLayers
+     */
+    public int[] getNbLayers() {
+        return nbLayers;
+    }
+
+    /**
+     * mengatur jumlah masing-masing node setiap layer dan jumlah layer
+     * @param nbLayers the nbLayers to set
+     */
+    public void setNbLayers(int[] nbLayers) {
+        this.nbLayers = nbLayers;
+    }
+    
     /**
      * mendapatkan nilai learningRate
      * @return the learningRate
@@ -255,12 +275,47 @@ public class myANN extends Classifier{
     
     /**
      * Melakukan training dengan data yang diberikan
-     * @param data training data
+     * @param instances training data
      * @throws Exception Exception apapun yang menyebabkan training gagal
      */
     @Override
-    public void buildClassifier(Instances data) throws Exception {
-        // TODO
+    public void buildClassifier(Instances instances) throws Exception {
+        getCapabilities().testWithFail(instances);
+        
+        // membangun ANN berdasarkan nbLayers
+        // membuat layer
+        ArrayList<ArrayList<Node>> layers = new ArrayList<>();
+        for (int i = 0; i < nbLayers.length; i++) {
+            layers.add(new ArrayList<>());
+        }
+        
+        // inisialisasi bagian input layer
+        for (int i = 0; i < nbLayers[0]; i++) {
+            // set id, prevLayer = null, nextLayer = layers[1]
+            layers.get(0).add(new Node("node-0"+"-"+i, null, layers.get(1)));
+        }
+        
+        // inisialisasi bagian hidden layer
+        for (int i = 1; i < nbLayers.length - 1; i++) {
+            for (int j = 0; j < nbLayers[i]; j++) {
+                // set id, prevLayer = layers[i-1], nextLayer = layers[i+1]
+                layers.get(i).add(new Node("node-"+i+"-"+j, layers.get(i-1), layers.get(i+1)));
+            }
+        }
+        
+        // inisialisasi bagian output layer
+        for (int i = 0; i < nbLayers[nbLayers.length - 1]; i++) {
+            // set id, prevLayer = layers[n-1], nextLayer = null
+            layers.get(nbLayers.length - 1).add(new Node("node-"+(nbLayers.length - 1)+"-"+i, layers.get(nbLayers.length - 2), null));
+        }
+        
+        // tambah weight tiap neuron
+        // siapin bobot bias, jumlah layer bias adalah nbLayers - 1
+        // jumlah bobot setiap layer sama dengan jumlah node setiap layer
+        double[][] biasWeight = new double[nbLayers.length - 1][];
+        for (int i = 1; i < biasWeight.length; i++) {
+            biasWeight[i] = new double[nbLayers[i]];
+        }
     }
     
     /**
