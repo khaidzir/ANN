@@ -6,6 +6,9 @@
 package ann;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 import weka.classifiers.Classifier;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
@@ -253,7 +256,6 @@ public class myANN extends Classifier{
      * Mengembalikan default capability dari ANN
      * @return ANN's capability
      */
-    @Override
     public Capabilities getCapabilities() { 
         Capabilities result = super.getCapabilities();
         result.disableAll();
@@ -278,7 +280,6 @@ public class myANN extends Classifier{
      * @param instances training data
      * @throws Exception Exception apapun yang menyebabkan training gagal
      */
-    @Override
     public void buildClassifier(Instances instances) throws Exception {
         getCapabilities().testWithFail(instances);
         
@@ -310,12 +311,49 @@ public class myANN extends Classifier{
         }
         
         // tambah weight tiap neuron
+        
         // siapin bobot bias, jumlah layer bias adalah nbLayers - 1
-        // jumlah bobot setiap layer sama dengan jumlah node setiap layer
+        ArrayList<Double> bias = new ArrayList<>();
+        for (int i = 0; i < nbLayers.length - 1; i++) {
+            bias.add(1.0);
+        }
+                
+        // jumlah bobot setiap layer sama dengan jumlah node setiap layer                
         double[][] biasWeight = new double[nbLayers.length - 1][];
         for (int i = 1; i < biasWeight.length; i++) {
             biasWeight[i] = new double[nbLayers[i]];
         }
+        // masukin setiap bobot dengan angka random
+        Random rand = new Random();
+        // masukin bobot bias
+        Map<Integer, Map<Node, Double>> biasesWeight = new HashMap<>();
+        for (int i = 0; i < nbLayers.length - 1; i++) {
+            ArrayList<Node> arrNode = layers.get(i+1);
+            Map<Node, Double> map = new HashMap<>();
+            for (Node node : arrNode) {
+                map.put(node, rand.nextDouble());
+            }
+            biasesWeight.put(i, map);
+        }
+        
+        // masukin bobot tiap neuron
+        Map<Node, Map<Node, Double>> mapWeight = new HashMap<>();
+        for (int i = 0; i < nbLayers.length-1; i++) {
+            ArrayList<Node> arrNode = layers.get(i);
+            for (Node node : arrNode) {
+                Map<Node, Double> map = new HashMap<>();
+                for (Node nextNode : node.getNextNodes()) {
+                    map.put(nextNode, rand.nextDouble());
+                }
+                mapWeight.put(node, map);
+            }
+        }
+        
+        // buat model ANN berdasarkan nilai di atas
+        ANNModel annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
+        ArrayList<Double> input = new ArrayList<>();
+        // TODO
+        
     }
     
     /**
@@ -325,7 +363,6 @@ public class myANN extends Classifier{
      * @return array of double berisi probabilitas masing-masing kelas
      * @throws Exception Exception apapun yang menyebabkan gagal memprediksi
      */
-    @Override
     public double[] distributionForInstance(Instance i) throws Exception {
         // TODO
         double[] retArray = null;
