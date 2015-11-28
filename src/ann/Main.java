@@ -20,13 +20,16 @@ public class Main {
     public static void main(String[] args) {
         try {
             File file = new File("/media/yusuf/5652859E52858389/Data/Kuliah/Semester 7/ML/WekaMiddle/weather.nominal.arff");
-            Instances data = null;
+            File unlabel = new File("/media/yusuf/5652859E52858389/Data/Kuliah/Semester 7/ML/WekaMiddle/weather.nominal.unlabeled.arff");
+            Instances data;
             ConverterUtils.DataSource source = new ConverterUtils.DataSource(file.getPath());
             data = source.getDataSet();
             if (data.classIndex() == -1) {
                 data.setClassIndex(data.numAttributes() - 1);
             }
             MyANN myANN = new MyANN();
+            int[] nbLayers = {4, 2};
+            myANN.setNbLayers(nbLayers);
             myANN.buildClassifier(data);
         } catch (Exception ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);

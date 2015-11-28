@@ -59,6 +59,7 @@ public class MyANN extends Classifier{
     private double[] weights;
     
     private ArrayList<Data> datas;  // instances yang telah diubah ke dalam array of data
+    private ANNModel annModel;      // model yang akan diklasifikasi dari training data dan akan digunakan untuk prediksi
 
     ////////////////////////////////
     ////     Setter-Getter      ////
@@ -294,11 +295,6 @@ public class MyANN extends Classifier{
         // ubah instances ke data
         instancesToDatas(instances);
         
-        //// debugging
-       
-        //// end edbugging
-        
-        
         // membangun ANN berdasarkan nbLayers
         // membuat layer
         ArrayList<ArrayList<Node>> layers = new ArrayList<>();
@@ -366,23 +362,31 @@ public class MyANN extends Classifier{
         }
         
         // buat model ANN berdasarkan nilai di atas
-        ANNModel annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
-        // TODO
+        annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
+        annModel.setDataSet(datas);
+        annModel.backProp();
         
     }
     
     /**
      * Fungsi untuk prediksi kelas dari suatu datum setelah model
      * selesai dibangun
-     * @param i datum yang mau diklasifikasi
-     * @return array of double berisi probabilitas masing-masing kelas
+     * @param instance datum yang mau diklasifikasi
+     * @return array of double berisi nilai dari masing-masing output
      * @throws Exception Exception apapun yang menyebabkan gagal memprediksi
      */
     @Override
-    public double[] distributionForInstance(Instance i) throws Exception {
-        // TODO
-        double[] retArray = null;
-        return retArray;
+    public double[] distributionForInstance(Instance instance) throws Exception {
+        // ubah instance ke Data
+        Data data = instanceToData(instance);
+        double[] target = new double[data.target.size()];
+        if (annModel != null) {
+            ArrayList<Double> temp = annModel.calculate(data.input);
+            for (int i = 0; i < temp.size(); i++) {
+                target[i] = temp.get(i);
+            }
+        }
+        return target;
     }
     
     ///////////////////////////////////////////////////////
@@ -439,25 +443,38 @@ public class MyANN extends Classifier{
         datas = new ArrayList<>();
         
         for (int i = 0; i < instances.numInstances(); i++) {
-            ArrayList<Double> input = new ArrayList<>();
-            ArrayList<Double> target = new ArrayList<>();
-            for (int j = 0; j < instances.numAttributes()-1; j++) {
-                input.add(0.0);
-            }
-            for (int j = 0; j < instances.classAttribute().numValues(); j++) {
+            datas.add(instanceToData(instances.instance(i)));
+        }
+    }
+    
+    /**
+     * mengubah Instance menjadi Data
+     * @param instance Instance yang akan diubah menjadi kelas Data
+     * @return kelas Data dari input
+     */
+    private Data instanceToData(Instance instance) {
+        ArrayList<Double> input = new ArrayList<>();
+        ArrayList<Double> target = new ArrayList<>();
+        for (int j = 0; j < instance.numAttributes()-1; j++) {
+            input.add(0.0);
+        }
+        if (instance.classAttribute().isNominal()) {
+            for (int j = 0; j < instance.classAttribute().numValues(); j++) {
                 target.add(0.0);
             }
-            
-            for (int j = 0; j < instances.instance(i).numAttributes(); j++) {
-                if (j == instances.classIndex()) {
-                    target.set((int)instances.instance(i).value(j), 1.0);
-                } else {
-                    input.set(j, instances.instance(i).value(j));
-                }
-            }
-            
-            Data data = new Data(input, target);
-            datas.add(data);
+        } else {
+            target.add(0.0);
         }
+        for (int j = 0; j < instance.numAttributes(); j++) {
+            if (j == instance.classIndex()) {
+                if (instance.attribute(j).isNominal())
+                    target.set((int)instance.value(j), 1.0);
+                else
+                    target.add(instance.value(j));
+            } else {
+                input.set(j, instance.value(j));
+            }
+        }
+        return new Data(input, target);
     }
 }
