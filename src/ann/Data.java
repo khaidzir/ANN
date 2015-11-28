@@ -15,4 +15,14 @@ public class Data {
     
     public ArrayList<Double> input, target;
     
+    Data() {
+        input = new ArrayList<> ();
+        target = new ArrayList<> ();
+    }
+    
+    Data(ArrayList<Double> _input, ArrayList<Double> _target) {
+        input = _input;
+        target = _target;
+    }
+    
 }

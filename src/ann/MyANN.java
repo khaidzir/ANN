@@ -19,7 +19,7 @@ import weka.core.Instances;
  *
  * @author YusufR
  */
-public class myANN extends Classifier{
+public class MyANN extends Classifier{
     
     /**
      * Daftar konstanta untuk berbagai parameter
@@ -57,6 +57,8 @@ public class myANN extends Classifier{
     private boolean isInitialWeightSet = false;
     private int[] nbLayers;     // jumlah layer dan jumlah node setiap layer
     private double[] weights;
+    
+    private ArrayList<Data> datas;  // instances yang telah diubah ke dalam array of data
 
     ////////////////////////////////
     ////     Setter-Getter      ////
@@ -256,6 +258,7 @@ public class myANN extends Classifier{
      * Mengembalikan default capability dari ANN
      * @return ANN's capability
      */
+    @Override
     public Capabilities getCapabilities() { 
         Capabilities result = super.getCapabilities();
         result.disableAll();
@@ -280,8 +283,21 @@ public class myANN extends Classifier{
      * @param instances training data
      * @throws Exception Exception apapun yang menyebabkan training gagal
      */
+    @Override
     public void buildClassifier(Instances instances) throws Exception {
+        
+        // cek apakah sesuai dengan data input
         getCapabilities().testWithFail(instances);
+        // buang semua missing class
+        instances.deleteWithMissingClass();
+        
+        // ubah instances ke data
+        instancesToDatas(instances);
+        
+        //// debugging
+       
+        //// end edbugging
+        
         
         // membangun ANN berdasarkan nbLayers
         // membuat layer
@@ -351,7 +367,6 @@ public class myANN extends Classifier{
         
         // buat model ANN berdasarkan nilai di atas
         ANNModel annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
-        ArrayList<Double> input = new ArrayList<>();
         // TODO
         
     }
@@ -363,6 +378,7 @@ public class myANN extends Classifier{
      * @return array of double berisi probabilitas masing-masing kelas
      * @throws Exception Exception apapun yang menyebabkan gagal memprediksi
      */
+    @Override
     public double[] distributionForInstance(Instance i) throws Exception {
         // TODO
         double[] retArray = null;
@@ -415,5 +431,33 @@ public class myANN extends Classifier{
         return 1.0/(1.0+Math.exp(-_value));
     }
 
-    
+    /**
+     * mengubah instances ke dalam array of data dan disimpan ke variabel datas
+     * @param instances input yang akan diubah ke dalam array of data
+     */
+    private void instancesToDatas(Instances instances) {
+        datas = new ArrayList<>();
+        
+        for (int i = 0; i < instances.numInstances(); i++) {
+            ArrayList<Double> input = new ArrayList<>();
+            ArrayList<Double> target = new ArrayList<>();
+            for (int j = 0; j < instances.numAttributes()-1; j++) {
+                input.add(0.0);
+            }
+            for (int j = 0; j < instances.classAttribute().numValues(); j++) {
+                target.add(0.0);
+            }
+            
+            for (int j = 0; j < instances.instance(i).numAttributes(); j++) {
+                if (j == instances.classIndex()) {
+                    target.set((int)instances.instance(i).value(j), 1.0);
+                } else {
+                    input.set(j, instances.instance(i).value(j));
+                }
+            }
+            
+            Data data = new Data(input, target);
+            datas.add(data);
+        }
+    }
 }
