@@ -15,6 +15,9 @@ import java.util.Map;
  */
 public class ANNModel {
     
+    /* KODE FUNGSI AKTIVASI */
+    public static final int STEP = 0, SIGN = 1, SIGMOID = 2;
+    
     private ArrayList<ArrayList<Node>> layers;
     private Map<Node, Map<Node, Double>> weightMap;
     private ArrayList<Double> biases;
@@ -22,7 +25,13 @@ public class ANNModel {
     
     private double[][] tempTable, errorTable;
     private double learningRate;
+    private int activationFuncCode;
+    
+    // threshold buat fungsi step atau sign
+    private double threshold;
+    
     public double error;
+    
     
     private ArrayList<Data> trainingSet;
     
@@ -46,7 +55,26 @@ public class ANNModel {
         this.trainingSet = data;
     }
     public void setLearningRate(double eta) {
-        learningRate = eta;
+        this.learningRate = eta;
+    }
+    public void setActivationFunction(int funcCode) {
+        this.activationFuncCode = funcCode;
+    }
+    public void setThreshold(double t) {
+        this.threshold = t;
+    }
+    
+    /* FUNGSI AKTIVASI */
+    private double stepFunc(double input) {
+        if(input >= threshold) return 1;
+        else return 0;
+    }
+    private double signFunc(double input) {
+        if(input >= threshold) return 1;
+        else return -1;
+    }
+    private double sigmoidFunc(double input) {
+        return 1.0/(1.0+Math.exp(-input));
     }
     
     public ArrayList<Double> calculate(ArrayList<Double> input) {
@@ -60,18 +88,19 @@ public class ANNModel {
     
     private void feedForward(ArrayList<Double> input) {
         // Input pertama
-        int b = 0;
         for(int i=0; i<layers.get(1).size(); i++) {
             tempTable[0][i] = 0.0;
             for(int j=0; j<layers.get(0).size(); j++) {
 //                System.out.println(input.get(j)+" * "+ weightMap.get(layers.get(0).get(j)).get(layers.get(1).get(i)));
                 tempTable[0][i] += input.get(j) * weightMap.get(layers.get(0).get(j)).get(layers.get(1).get(i));
             }
-//            System.out.println(biases.get(0)+" * "+ biasesWeight.get(b));
+//            System.out.println(biases.get(0)+" * "+ biasesWeight.get(0).get(layers.get(1).get(i)));
             tempTable[0][i] += biases.get(0)*biasesWeight.get(0).get(layers.get(1).get(i));
 //            System.out.println("Hasil 1 : " + tempTable[0][i]);
-            b++;
-            tempTable[0][i] = sigmoidFunc(tempTable[0][i]);
+            
+            if(activationFuncCode == STEP) tempTable[0][i] = stepFunc(tempTable[0][i]);
+            else if(activationFuncCode == SIGN) tempTable[0][i] = signFunc(tempTable[0][i]);
+            else if (activationFuncCode == SIGMOID) tempTable[0][i] = sigmoidFunc(tempTable[0][i]);
 //            System.out.println("Hasil 2 : " + tempTable[0][i]);
 //            System.out.println("----");            
         }
@@ -80,16 +109,19 @@ public class ANNModel {
             for(int i=0; i<layers.get(1).size(); i++) {
                 tempTable[k][i] = 0.0;
                 for(int j=0; j<layers.get(k).size(); j++) {   
-//                    System.out.println(tempTable[k-1][j]+" * "+ weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i)));
+                    System.out.println(tempTable[k-1][j]+" * "+ weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i)));
                     tempTable[k][i] += tempTable[k-1][j] * weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i));
                 }
-//                System.out.println(biases.get(k)+" * "+ biasesWeight.get(b));
+                System.out.println(biases.get(k)+" * "+ biasesWeight.get(k).get(layers.get(k+1).get(i)));
                 tempTable[k][i] += biases.get(k)*biasesWeight.get(k).get(layers.get(k+1).get(i));
-//                System.out.println("Hasil 1 : " + tempTable[k][i]);
-                b++;
-                tempTable[k][i] = sigmoidFunc(tempTable[k][i]);
-//                System.out.println("Hasil 2 : " + tempTable[k][i]);
-//                System.out.println("----");
+                System.out.println("Hasil 1 : " + tempTable[k][i]);
+
+                if(activationFuncCode == STEP) tempTable[k][i] = stepFunc(tempTable[k][i]);
+                else if(activationFuncCode == SIGN) tempTable[k][i] = signFunc(tempTable[k][i]);
+                else if (activationFuncCode == SIGMOID) tempTable[k][i] = sigmoidFunc(tempTable[k][i]);
+                
+                System.out.println("Hasil 2 : " + tempTable[k][i]);
+                System.out.println("----");
             }
         }
     }
@@ -180,9 +212,7 @@ public class ANNModel {
         //////////////////////////////////////////////////////////////////////
     }
     
-    private double sigmoidFunc(double input) {
-        return 1.0/(1.0+Math.exp(-input));
-    }
+
     
     public static void main(String[] args) {
         coba2();
@@ -277,6 +307,7 @@ public class ANNModel {
         }
         
         ANNModel annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
+        annModel.setActivationFunction(ANNModel.SIGMOID);
         ArrayList<Double> input = new ArrayList<>();
         input.add(0.05);
         input.add(0.10);
@@ -381,8 +412,8 @@ public class ANNModel {
         input.add(0.10);
         
         ArrayList<Double> output = new ArrayList<>();
-        output.add(0.1);
-        output.add(0.5);
+        output.add(0.01);
+        output.add(0.99);
         
         ArrayList<Data> trainingSet = new ArrayList<>();
         Data d = new Data();
@@ -392,6 +423,7 @@ public class ANNModel {
         
         annModel.setDataSet(trainingSet);
         annModel.setLearningRate(0.1);
+        annModel.setActivationFunction(ANNModel.SIGMOID);
         System.out.println("Awal : ");
         annModel.print();
         
