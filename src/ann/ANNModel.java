@@ -109,19 +109,19 @@ public class ANNModel {
             for(int i=0; i<layers.get(1).size(); i++) {
                 tempTable[k][i] = 0.0;
                 for(int j=0; j<layers.get(k).size(); j++) {   
-                    System.out.println(tempTable[k-1][j]+" * "+ weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i)));
+//                    System.out.println(tempTable[k-1][j]+" * "+ weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i)));
                     tempTable[k][i] += tempTable[k-1][j] * weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i));
                 }
-                System.out.println(biases.get(k)+" * "+ biasesWeight.get(k).get(layers.get(k+1).get(i)));
+//                System.out.println(biases.get(k)+" * "+ biasesWeight.get(k).get(layers.get(k+1).get(i)));
                 tempTable[k][i] += biases.get(k)*biasesWeight.get(k).get(layers.get(k+1).get(i));
-                System.out.println("Hasil 1 : " + tempTable[k][i]);
+//                System.out.println("Hasil 1 : " + tempTable[k][i]);
 
                 if(activationFuncCode == STEP) tempTable[k][i] = stepFunc(tempTable[k][i]);
                 else if(activationFuncCode == SIGN) tempTable[k][i] = signFunc(tempTable[k][i]);
                 else if (activationFuncCode == SIGMOID) tempTable[k][i] = sigmoidFunc(tempTable[k][i]);
                 
-                System.out.println("Hasil 2 : " + tempTable[k][i]);
-                System.out.println("----");
+//                System.out.println("Hasil 2 : " + tempTable[k][i]);
+//                System.out.println("----");
             }
         }
     }
@@ -179,12 +179,51 @@ public class ANNModel {
             
             // Update weight bias
             for(int k=0; k<layers.size()-1; k++) {
-                for(int i=0; i<layers.get(k).size(); i++) {
-                    for(int j=0; j<layers.get(k+1).size(); j++) {
-                        dW = learningRate * errorTable[k][j] * biases.get(k);
-                        output = biasesWeight.get(k).get(layers.get(k+1).get(j));
-                        biasesWeight.get(k).replace(layers.get(k+1).get(j), output+dW);
-                    }
+                for(int j=0; j<layers.get(k+1).size(); j++) {
+                    dW = learningRate * errorTable[k][j] * biases.get(k);
+                    output = biasesWeight.get(k).get(layers.get(k+1).get(j));
+                    biasesWeight.get(k).replace(layers.get(k+1).get(j), output+dW);
+                }
+            }
+        }
+        error /= 2;
+        System.out.println("Error sekarang : " + error);
+    }
+    
+    public void perceptronTrainingRule() {
+        double output, dW;
+        error = 0.0;
+        for(Data d : trainingSet) {
+            feedForward(d.input);
+            
+            for(int i=0; i<tempTable[tempTable.length-1].length; i++) {
+                output = (d.target.get(i)-tempTable[tempTable.length-1][i]);
+                error += output * output;
+            }
+            
+            // Hitung error output
+            for(int i=0; i<layers.get(layers.size()-1).size(); i++) {
+                output = tempTable[tempTable.length-1][i];
+                errorTable[errorTable.length-1][i] = (d.target.get(i)-output);
+                if(activationFuncCode == SIGMOID)
+                    errorTable[errorTable.length-1][i] *= output * (1-output);
+            }
+            
+            // Update weight input            
+            for(int i=0; i<layers.get(0).size(); i++) {
+                for(int j=0; j<layers.get(1).size(); j++) {
+                    dW = learningRate * errorTable[0][j] * d.input.get(i);
+                    output = weightMap.get(layers.get(0).get(i)).get(layers.get(1).get(j));
+                    weightMap.get(layers.get(0).get(i)).replace(layers.get(1).get(j), output+dW);
+                }
+            }
+            
+            // Update weight bias
+            for(int k=0; k<layers.size()-1; k++) {
+                for(int j=0; j<layers.get(k+1).size(); j++) {
+                    dW = learningRate * errorTable[k][j] * biases.get(k);
+                    output = biasesWeight.get(k).get(layers.get(k+1).get(j));
+                    biasesWeight.get(k).replace(layers.get(k+1).get(j), output+dW);
                 }
             }
         }
@@ -428,13 +467,162 @@ public class ANNModel {
         annModel.print();
         
         System.out.println("--\nBackProp : ");
-        int counter = 1;
+        int counter = 0;
         do {
             annModel.backProp();
             annModel.print();
             counter++;
         } while(annModel.error > 0.001);
         System.out.println("\n--Jumlah Iterasi : " + counter);
+        
+    }
+    
+    // Single layer perceptron
+    public static void coba3() {
+        String id = "node";
+        
+        int nlayer=1;
+        ArrayList<Integer> nNode = new ArrayList<>();
+        nNode.add(3);   // 3 input
+        nNode.add(1);   // 1 node layer awal
+        
+        /* Buat layer */
+        ArrayList<ArrayList<Node>> layers = new ArrayList<>();
+        for(int i=0; i<=nlayer; i++) {
+            layers.add(new ArrayList<>());
+        }
+        
+        // Inisialisasi bagian input
+        for(int i=0; i<nNode.get(0); i++)
+            layers.get(0).add(new Node(id+"-"+0+"-"+i, null, layers.get(1)));
+        
+        // Inisialisasi layer awal-tengah
+        int i=1;
+        for(; i<nNode.size()-1; i++) {
+            for(int j=0; j<nNode.get(i); j++) {
+                layers.get(i).add(new Node(id+"-"+i+"-"+j, layers.get(i-1), layers.get(i+1)));
+            }
+        }
+        
+        // Inisialisasi layer akhir
+        for(int j=0; j<nNode.get(i); j++) {
+            layers.get(i).add(new Node(id+"-"+i+"-"+j, layers.get(i-1), null));
+        }
+        
+        /* Buat weight */
+        
+        // weight tiap hubungan neuron
+        ArrayList<Double> listWeight = new ArrayList<>();
+        listWeight.add(0.0);
+        listWeight.add(0.0);
+        listWeight.add(0.0);
+        
+        // nilai bias
+        ArrayList<Double> bias = new ArrayList<>();
+        bias.add(1.0);
+        
+        // daftar bobot bias
+        ArrayList<Double> listWeightBias = new ArrayList<>();
+        listWeightBias.add(0.0);    
+        
+        // Bobot bias
+        Map<Integer, Map<Node, Double>> biasesWeight = new HashMap<>();
+        i=0;
+        for(int j=0; j<layers.size()-1; j++) {
+            ArrayList<Node> arrNode = layers.get(j+1);
+            Map<Node, Double> map = new HashMap<>();
+            for(Node node : arrNode) {                
+                map.put(node, listWeightBias.get(i));
+                i++;
+            }
+            biasesWeight.put(j, map);            
+        }
+        
+        // map weight
+        Map<Node, Map<Node, Double>> mapWeight = new HashMap<>();
+        
+        // Isi tiap weight
+        i=0;        
+        for(int j=0; j<layers.size()-1; j++) {
+            ArrayList<Node> arrNode = layers.get(j);
+            for(Node node : arrNode) {
+                Map<Node, Double> map = new HashMap<>();
+                for(Node nextNode : node.getNextNodes()) {                    
+                    map.put(nextNode, listWeight.get(i));
+                    i++;
+                }
+                mapWeight.put(node, map);
+            }
+        }
+        
+        ANNModel annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
+        
+        /* Set training set */
+        ArrayList<Data> trainingSet = new ArrayList<>();
+        
+        /* Dataset ke-1 */
+        ArrayList<Double> input1 = new ArrayList<>();
+        input1.add(1.0);
+        input1.add(0.0);
+        input1.add(1.0);
+        
+        ArrayList<Double> output1 = new ArrayList<>();
+        output1.add(-1.0);
+        
+        Data d1 = new Data();
+        d1.input = input1;
+        d1.target = output1;
+        trainingSet.add(d1);
+        
+        /* Dataset ke-2 */
+        ArrayList<Double> input2 = new ArrayList<>();
+        input2.add(0.0);
+        input2.add(-1.0);
+        input2.add(-1.0);
+        
+        ArrayList<Double> output2 = new ArrayList<>();
+        output2.add(1.0);
+        
+        Data d2 = new Data();
+        d2.input = input2;
+        d2.target = output2;
+        trainingSet.add(d2);
+        
+        /* Dataset ke-3 */
+        ArrayList<Double> input3 = new ArrayList<>();
+        input3.add(-1.0);
+        input3.add(-0.5);
+        input3.add(-1.0);
+        
+        ArrayList<Double> output3 = new ArrayList<>();
+        output3.add(1.0);
+        
+        Data d3 = new Data();
+        d3.input = input3;
+        d3.target = output3;
+        trainingSet.add(d3);
+        
+        annModel.setDataSet(trainingSet);
+        annModel.setLearningRate(0.1);
+        annModel.setActivationFunction(ANNModel.SIGN);
+        annModel.setThreshold(0.0);
+        System.out.println("Awal : ");
+//        annModel.print();
+        
+        System.out.println("--\nBackProp : ");
+        int counter = 0;
+        do {
+            annModel.perceptronTrainingRule();
+            annModel.print();
+            counter++;
+        } while(annModel.error > 0.01);
+        System.out.println("\n--Jumlah Iterasi : " + counter);
+
+//        ArrayList<Double> arr = annModel.calculate(input);
+//        for(Double a : arr) {
+//            System.out.println(a);
+//        }
+//        annModel.print();
         
     }
     
