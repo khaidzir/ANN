@@ -41,6 +41,7 @@ public class MyANN extends Classifier{
     // jenis terminasi yang digunakan, deltaMSE atau maxIteration
     public static final char TERMINATE_MSE = 9;
     public static final char TERMINATE_MAX_ITERATION = 10;
+    public static final char TERMINATE_BOTH = 11;
     
     /**
      * Daftar variabel yang digunakan untuk perhitungan dan parameter
@@ -56,7 +57,7 @@ public class MyANN extends Classifier{
     private char terminationCondition = TERMINATE_MSE;
     private boolean isInitialWeightSet = false;
     private int[] nbLayers;     // jumlah layer dan jumlah node setiap layer
-    private double[] weights;
+    private double[][] weights; // weight awal, weights[0] untuk bobot neuron dan weights[1] untuk bobot bias
     
     private ArrayList<Data> datas;  // instances yang telah diubah ke dalam array of data
     private ANNModel annModel;      // model yang akan diklasifikasi dari training data dan akan digunakan untuk prediksi
@@ -70,7 +71,7 @@ public class MyANN extends Classifier{
      * mengatur nilai weight awal 
      * @param _weight nilai weight awal
      */
-    public void setInitialWeight(double[] _weight) {
+    public void setInitialWeight(double[][] _weight) {
         isInitialWeightSet = true;
         // TODO : set masing2 weight
         weights = _weight;
@@ -335,19 +336,27 @@ public class MyANN extends Classifier{
         for (int i = 1; i < biasWeight.length; i++) {
             biasWeight[i] = new double[nbLayers[i]];
         }
+        
         // masukin setiap bobot dengan angka random
         Random rand = new Random();
         // masukin bobot bias
+        int j = 0;
         Map<Integer, Map<Node, Double>> biasesWeight = new HashMap<>();
         for (int i = 0; i < nbLayers.length - 1; i++) {
             ArrayList<Node> arrNode = layers.get(i+1);
             Map<Node, Double> map = new HashMap<>();
             for (Node node : arrNode) {
-                map.put(node, rand.nextDouble());
+                if (isInitialWeightSet) {
+                    map.put(node, weights[1][j]);
+                } else {
+                    map.put(node, rand.nextDouble());
+                }
+                j++;
             }
             biasesWeight.put(i, map);
         }
         
+        j=0;
         // masukin bobot tiap neuron
         Map<Node, Map<Node, Double>> mapWeight = new HashMap<>();
         for (int i = 0; i < nbLayers.length-1; i++) {
@@ -355,7 +364,12 @@ public class MyANN extends Classifier{
             for (Node node : arrNode) {
                 Map<Node, Double> map = new HashMap<>();
                 for (Node nextNode : node.getNextNodes()) {
-                    map.put(nextNode, rand.nextDouble());
+                    if (isInitialWeightSet) {
+                        map.put(nextNode, weights[0][j]);
+                    } else {
+                        map.put(nextNode, rand.nextDouble());
+                    }
+                    j++;
                 }
                 mapWeight.put(node, map);
             }
@@ -363,8 +377,62 @@ public class MyANN extends Classifier{
         
         // buat model ANN berdasarkan nilai di atas
         annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
+        // set konfigurasi awal model
         annModel.setDataSet(datas);
-        annModel.backProp();
+        annModel.setLearningRate(learningRate);
+        switch (activationFunction) {
+            case SIGMOID_FUNCTION:
+                annModel.setActivationFunction(ANNModel.SIGMOID);
+                break;
+            case SIGN_FUNCTION:
+                annModel.setActivationFunction(ANNModel.SIGN);
+                break;
+            case STEP_FUNCTION:
+                annModel.setActivationFunction(ANNModel.STEP);
+                break;
+            default:
+                break;
+        }
+        annModel.setThreshold(threshold);
+        
+        // jalankan algoritma
+        boolean stop = false;
+        int iteration = 0;
+        do{
+            if (topology == ONE_PERCEPTRON) {
+                switch(learningRule) {
+                    case SIMPLE_PERCEPTRON:
+                        annModel.perceptronTrainingRule();
+                        break;
+                    case BATCH_GRADIENT_DESCENT:
+                        annModel.batchGradienDescent();
+                        break;
+                    case DELTA_RULE:
+                        annModel.deltaRule();
+                        break;
+                    default:
+                        break;
+                }
+            } else if (topology == MULTILAYER_PERCEPTRON) {
+                annModel.backProp();
+            }
+            iteration++;
+            
+            // berhenti jika terminateCondition terpenuhi
+            switch(terminationCondition) {
+                case TERMINATE_MAX_ITERATION:
+                    if(iteration >= maxIteration) stop = true;
+                    break;
+                case TERMINATE_MSE:
+                    if(annModel.error < deltaMSE) stop = true;
+                    break;
+                case TERMINATE_BOTH:
+                    if(iteration > maxIteration || annModel.error < deltaMSE) stop = true;
+                    break;
+                default:
+                    break;
+            }
+        }while(!stop);
         
     }
     

@@ -216,7 +216,7 @@ public class ANNModel {
             }
         }
         error /= 2;
-        System.out.println("Error sekarang : " + error);
+//        System.out.println("Error sekarang : " + error);
     }
     
     public void perceptronTrainingRule() {
@@ -371,7 +371,7 @@ public class ANNModel {
             }
         }
         error /= 2;
-//        System.out.println("Error sekarang : " + error);
+        //System.out.println("Error sekarang : " + error);
     }
     
     public void print() {
@@ -590,12 +590,12 @@ public class ANNModel {
         
         ANNModel annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
         ArrayList<Double> input = new ArrayList<>();
-        input.add(0.05);
-        input.add(0.10);
+        input.add(0.01);
+        input.add(0.99);
         
         ArrayList<Double> output = new ArrayList<>();
-        output.add(0.01);
-        output.add(0.99);
+        output.add(0.0);
+        output.add(1.0);
         
         ArrayList<Data> trainingSet = new ArrayList<>();
         Data d = new Data();
@@ -606,6 +606,7 @@ public class ANNModel {
         annModel.setDataSet(trainingSet);
         annModel.setLearningRate(0.1);
         annModel.setActivationFunction(ANNModel.SIGMOID);
+        annModel.setThreshold(0.0);
         System.out.println("Awal : ");
         annModel.print();
         
