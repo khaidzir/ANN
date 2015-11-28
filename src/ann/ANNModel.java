@@ -126,6 +126,35 @@ public class ANNModel {
         }
     }
     
+    private void feedForwardWithoutActivationFunction(ArrayList<Double> input) {
+            // Input pertama
+        for(int i=0; i<layers.get(1).size(); i++) {
+            tempTable[0][i] = 0.0;
+            for(int j=0; j<layers.get(0).size(); j++) {
+//                System.out.println(input.get(j)+" * "+ weightMap.get(layers.get(0).get(j)).get(layers.get(1).get(i)));
+                tempTable[0][i] += input.get(j) * weightMap.get(layers.get(0).get(j)).get(layers.get(1).get(i));
+            }
+//            System.out.println(biases.get(0)+" * "+ biasesWeight.get(0).get(layers.get(1).get(i)));
+            tempTable[0][i] += biases.get(0)*biasesWeight.get(0).get(layers.get(1).get(i));
+//            System.out.println("Hasil 1 : " + tempTable[0][i]);
+//            System.out.println("----");            
+        }
+        
+        for(int k=1; k<layers.size()-1; k++) {
+            for(int i=0; i<layers.get(1).size(); i++) {
+                tempTable[k][i] = 0.0;
+                for(int j=0; j<layers.get(k).size(); j++) {   
+//                    System.out.println(tempTable[k-1][j]+" * "+ weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i)));
+                    tempTable[k][i] += tempTable[k-1][j] * weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i));
+                }
+//                System.out.println(biases.get(k)+" * "+ biasesWeight.get(k).get(layers.get(k+1).get(i)));
+                tempTable[k][i] += biases.get(k)*biasesWeight.get(k).get(layers.get(k+1).get(i));
+//                System.out.println("Hasil 1 : " + tempTable[k][i]);
+//                System.out.println("----");
+            }
+        }
+    }
+    
     public void backProp() {
         double output, dW;
         error = 0.0;
@@ -196,13 +225,13 @@ public class ANNModel {
         for(Data d : trainingSet) {
             feedForward(d.input);
             
-            for(int i=0; i<tempTable[tempTable.length-1].length; i++) {
+            for(int i=0; i<tempTable[0].length; i++) {
                 output = (d.target.get(i)-tempTable[tempTable.length-1][i]);
                 error += output * output;
             }
             
             // Hitung error output
-            for(int i=0; i<layers.get(layers.size()-1).size(); i++) {
+            for(int i=0; i<layers.get(1).size(); i++) {
                 output = tempTable[tempTable.length-1][i];
                 errorTable[errorTable.length-1][i] = (d.target.get(i)-output);
                 if(activationFuncCode == SIGMOID)
@@ -228,7 +257,121 @@ public class ANNModel {
             }
         }
         error /= 2;
-        System.out.println("Error sekarang : " + error);
+//        System.out.println("Error sekarang : " + error);
+    }
+    
+    public void batchGradienDescent() {
+        double output, dW;
+        error = 0.0;
+        
+        // Map sementara buat nyimpan delta weight kumulatif
+        Map<Node, Map<Node, Double>> mapDWeight = new HashMap<>();
+        for (Node n1 : weightMap.keySet()) {
+            Map<Node, Double> map = new HashMap<>();
+            for(Node n2 : weightMap.get(n1).keySet()) {                
+                map.put(n2, 0.0);
+            }
+            mapDWeight.put(n1, map);
+        }
+        
+        // Map sementara buat nyimpan delta weight bias kumulatif
+        Map<Node, Double> mapDBias = new HashMap<>();        
+        for(Node n : biasesWeight.get(0).keySet()) {                
+            mapDBias.put(n, 0.0);
+        }
+        
+        // Semua data set
+        for(Data d : trainingSet) {
+            feedForwardWithoutActivationFunction(d.input);
+            
+            // Hitung error
+            for(int i=0; i<tempTable[tempTable.length-1].length; i++) {
+                output = (d.target.get(i)-tempTable[tempTable.length-1][i]);
+                error += output * output;
+            }
+            
+            // Hitung delta weight
+            for(int i=0; i<layers.get(0).size(); i++) {
+                for(int j=0; j<layers.get(1).size(); j++) {
+                    output = tempTable[0][j];
+                    dW = learningRate * (d.target.get(j)-output) * d.input.get(i);
+                    if(activationFuncCode == SIGMOID)
+                        dW *= output * (1-output);
+                    output = mapDWeight.get(layers.get(0).get(i)).get(layers.get(1).get(j));
+                    mapDWeight.get(layers.get(0).get(i)).replace(layers.get(1).get(j), output+dW);
+                }
+            }
+            
+            // Hitung delta weight bias
+            for(int j=0; j<layers.get(1).size(); j++) {
+                output = tempTable[0][j];
+                dW = learningRate * (d.target.get(j)-output) * biases.get(0);
+                if(activationFuncCode == SIGMOID)
+                    dW *= output * (1-output);
+                output = mapDBias.get(layers.get(1).get(j));
+                mapDBias.replace(layers.get(1).get(j), output+dW);
+            }
+        }
+            
+        // Update weight input            
+        for(int i=0; i<layers.get(0).size(); i++) {
+            for(int j=0; j<layers.get(1).size(); j++) {
+                dW = mapDWeight.get(layers.get(0).get(i)).get(layers.get(1).get(j));
+                output = weightMap.get(layers.get(0).get(i)).get(layers.get(1).get(j));
+                weightMap.get(layers.get(0).get(i)).replace(layers.get(1).get(j), output+dW);
+            }
+        }
+
+        // Update weight bias
+        for(int j=0; j<layers.get(1).size(); j++) {
+            dW = mapDBias.get(layers.get(1).get(j));
+            output = biasesWeight.get(0).get(layers.get(1).get(j));
+            biasesWeight.get(0).replace(layers.get(1).get(j), output+dW);
+        }
+        
+        error /= 2;
+//        System.out.println("Error sekarang : " + error);
+    }
+    
+    public void deltaRule() {
+        double output, dW;
+        error = 0.0;
+        for(Data d : trainingSet) {
+            feedForwardWithoutActivationFunction(d.input);
+            
+            for(int i=0; i<tempTable[0].length; i++) {
+                output = (d.target.get(i)-tempTable[tempTable.length-1][i]);
+                error += output * output;
+            }
+            
+            // Hitung error output
+            for(int i=0; i<layers.get(1).size(); i++) {
+                output = tempTable[tempTable.length-1][i];
+                errorTable[errorTable.length-1][i] = (d.target.get(i)-output);
+                if(activationFuncCode == SIGMOID)
+                    errorTable[errorTable.length-1][i] *= output * (1-output);
+            }
+            
+            // Update weight input            
+            for(int i=0; i<layers.get(0).size(); i++) {
+                for(int j=0; j<layers.get(1).size(); j++) {
+                    dW = learningRate * errorTable[0][j] * d.input.get(i);
+                    output = weightMap.get(layers.get(0).get(i)).get(layers.get(1).get(j));
+                    weightMap.get(layers.get(0).get(i)).replace(layers.get(1).get(j), output+dW);
+                }
+            }
+            
+            // Update weight bias
+            for(int k=0; k<layers.size()-1; k++) {
+                for(int j=0; j<layers.get(k+1).size(); j++) {
+                    dW = learningRate * errorTable[k][j] * biases.get(k);
+                    output = biasesWeight.get(k).get(layers.get(k+1).get(j));
+                    biasesWeight.get(k).replace(layers.get(k+1).get(j), output+dW);
+                }
+            }
+        }
+        error /= 2;
+//        System.out.println("Error sekarang : " + error);
     }
     
     public void print() {
