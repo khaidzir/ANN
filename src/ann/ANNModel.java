@@ -247,8 +247,8 @@ public class ANNModel {
                 }
                 System.out.println("");
             }
-            System.out.println("\n");*/
-            
+            System.out.println("\n");
+            */
             // Update weight sisanya
             for(int k=1; k<layers.size()-1; k++) {
                 for(int i=0; i<layers.get(k).size(); i++) {
@@ -257,7 +257,7 @@ public class ANNModel {
                         // debug
                        // System.out.println("k: "+k+", i: "+i+", j: "+j);
                                 
-                        dW = ( learningRate * errorTable[k][j] * tempTable[k-1][j] ) +  
+                        dW = ( learningRate * errorTable[k][j] * tempTable[k-1][i] ) +  
                              ( momentum * mapDWeight.get(layers.get(k).get(i)).get(layers.get(k+1).get(j)) );
                         weight = weightMap.get(layers.get(k).get(i)).get(layers.get(k+1).get(j));
                         weightMap.get(layers.get(k).get(i)).replace(layers.get(k+1).get(j), weight+dW);
@@ -944,6 +944,7 @@ public class ANNModel {
         
         ArrayList<Double> output = new ArrayList<>();
         output.add(0.0);
+        output.add(1.0);
         output.add(1.0);
         
         ArrayList<Data> trainingSet = new ArrayList<>();

@@ -434,6 +434,8 @@ public class MyANN extends Classifier{
         boolean stop = false;
         iteration = 0;
         
+        //annModel.print();
+        annModel.resetDeltaWeight();
         do{        
             if (topology == ONE_PERCEPTRON) {
                 switch(learningRule) {
@@ -470,7 +472,7 @@ public class MyANN extends Classifier{
             }
         }while(!stop);
         
-        //annModel.print();
+//        annModel.print();
     }
     
     /**
