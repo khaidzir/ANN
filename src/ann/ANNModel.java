@@ -16,7 +16,7 @@ import java.util.Map;
 public class ANNModel {
     
     /* KODE FUNGSI AKTIVASI */
-    public static final int NO_FUNC = 0, STEP = 1, SIGN = 2, SIGMOID = 3 ;
+    public static final int NO_FUNC = 10, STEP = 1, SIGN = 2, SIGMOID = 3 ;
     
     // Atribut - atribut utama model
     private ArrayList<ArrayList<Node>> layers;
@@ -321,7 +321,7 @@ public class ANNModel {
             }
         }
         error /= 2;
-//        System.out.println("Error sekarang : " + error);
+        System.out.println("Error sekarang : " + error);
     }
     
     public void batchGradienDescent() {
@@ -330,7 +330,7 @@ public class ANNModel {
         
         // Reset map delta weight        
         for(int i=0; i<layers.get(0).size(); i++) {
-            for(int j=0; j<layers.get(1).size(); i++) {
+            for(int j=0; j<layers.get(1).size(); j++) {
                 mapDWeight.get(layers.get(0).get(i)).replace(layers.get(1).get(j), 0.0);
             }
         }
@@ -347,6 +347,7 @@ public class ANNModel {
             // Hitung error
             for(int i=0; i<tempTable[tempTable.length-1].length; i++) {
                 output = (d.target.get(i)-tempTable[tempTable.length-1][i]);
+//                System.out.println("output: "+output);
                 error += output * output;
             }
             
@@ -401,6 +402,7 @@ public class ANNModel {
             
             for(int i=0; i<tempTable[0].length; i++) {
                 output = (d.target.get(i)-tempTable[tempTable.length-1][i]);
+//                System.out.println("output: "+output);
                 error += output * output;
             }
             
@@ -431,7 +433,7 @@ public class ANNModel {
             }
         }
         error /= 2;
-        //System.out.println("Error sekarang : " + error);
+        System.out.println("Error sekarang : " + error);
     }
     
     

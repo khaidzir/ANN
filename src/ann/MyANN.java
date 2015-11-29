@@ -16,6 +16,8 @@ import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.NumericToBinary;
 
 /**
  *
@@ -327,6 +329,11 @@ public class MyANN extends Classifier{
         instances = new Instances(instances);
         instances.deleteWithMissingClass();
         
+        // filter
+        NumericToBinary ntb = new NumericToBinary();
+        ntb.setInputFormat(instances);
+        instances = Filter.useFilter(instances, ntb);
+        
         // ubah instances ke data
         instancesToDatas(instances);
         
@@ -412,6 +419,19 @@ public class MyANN extends Classifier{
         // buat model ANN berdasarkan nilai di atas
         annModel = new ANNModel(layers, mapWeight, bias, biasesWeight);
         // set konfigurasi awal model
+        // debug
+//        System.out.println("debug");
+//        for (Data d : datas) {
+//            for (Double dd : d.input) {
+//                System.out.print(dd+" ");
+//            }
+//            System.out.print(" | ");
+//            for (Double dd : d.target) {
+//                System.out.print(dd+" ");
+//            }
+//            System.out.println("");
+//        }
+//        System.out.println("debug");
         annModel.setDataSet(datas);
         annModel.setLearningRate(learningRate);
         annModel.setMomentum(momentum);
@@ -428,6 +448,8 @@ public class MyANN extends Classifier{
             default:
                 break;
         }
+        if (learningRule == BATCH_GRADIENT_DESCENT || learningRule == DELTA_RULE)
+            annModel.setActivationFunction(ANNModel.NO_FUNC);
         annModel.setThreshold(threshold);
         
         // jalankan algoritma
@@ -436,7 +458,7 @@ public class MyANN extends Classifier{
         
         //annModel.print();
         annModel.resetDeltaWeight();
-        do{        
+        do{ 
             if (topology == ONE_PERCEPTRON) {
                 switch(learningRule) {
                     case PERCEPTRON_TRAINING_RULE:
@@ -490,6 +512,7 @@ public class MyANN extends Classifier{
         if (annModel != null) {
             ArrayList<Double> temp = annModel.calculate(data.input);
             for (int i = 0; i < temp.size(); i++) {
+//                System.out.println("temp: "+temp.get(i));
                 target[i] = temp.get(i);
             }
         }
@@ -505,6 +528,8 @@ public class MyANN extends Classifier{
         double max = Double.NEGATIVE_INFINITY;
         int idx = -1;
         for (int i = 0; i < probability.length; i++) {
+            //debug
+//            System.out.println("prob: "+probability[i]);
             if (probability[i] > max) {
                 idx = i;
                 max = probability[i];
@@ -529,9 +554,16 @@ public class MyANN extends Classifier{
         } else {
             confusionMatrix= new int[1][2];
         }
+        // debug
+        for (int i = 0; i < testSet.numInstances(); i++) {
+//            System.out.println("cv: "+testSet.instance(i).classValue());
+        }
+        
         for (int i = 0; i < testSet.numInstances(); i++) {
             try {
                 double[] prob = distributionForInstance(testSet.instance(i));
+//                System.out.println("probl:"+prob.length);
+//                System.out.println("i: "+testSet.instance(i));
                 if (testSet.classAttribute().isNominal()) {
                     int idx = predictClassIndex(prob);
                     confusionMatrix[(int)testSet.instance(i).classValue()][idx]++;
