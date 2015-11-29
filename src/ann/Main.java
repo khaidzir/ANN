@@ -60,7 +60,7 @@ public class Main {
             System.out.println("-p <path> \t set data to predict");
             System.out.println("-r P|B|D \t set learning rule for OnePerceptron ");
                 System.out.println("\t\t   P=Perceptron training rule,B=Batch, D=DeltaRule");
-            System.out.println("-t O|M \t set topology, O=OnePerceptron, M=MLP");
+            System.out.println("-t O|M \t\t set topology, O=OnePerceptron, M=MLP");
             return;
         } else {    
             trainPath = args[args.length - 1];
