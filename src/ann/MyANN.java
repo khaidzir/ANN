@@ -31,7 +31,7 @@ public class MyANN extends Classifier{
     public static final char MULTILAYER_PERCEPTRON = 2;
     
     // learning rule apa yang digunakan, 1perceptron, batch, atau delta rule
-    public static final char SIMPLE_PERCEPTRON = 3;
+    public static final char PERCEPTRON_TRAINING_RULE = 3;
     public static final char BATCH_GRADIENT_DESCENT = 4;
     public static final char DELTA_RULE = 5;
     
@@ -54,12 +54,13 @@ public class MyANN extends Classifier{
     private int maxIteration = 500;   // input maxIteration untuk terminasi
     private double threshold = 0.0;   // input threshold untuk fungsi aktivasi sign dan step
     private char topology = ONE_PERCEPTRON;
-    private char learningRule = SIMPLE_PERCEPTRON;
+    private char learningRule = PERCEPTRON_TRAINING_RULE;
     private char activationFunction = SIGMOID_FUNCTION;
     private char terminationCondition = TERMINATE_MSE;
     private boolean isInitialWeightSet = false;
     private int[] nbLayers;     // jumlah layer dan jumlah node setiap layer
     private double[][] weights; // weight awal, weights[0] untuk bobot neuron dan weights[1] untuk bobot bias
+    private int iteration;      // jumalah iterasi klasifikasi
     
     private ArrayList<Data> datas;  // instances yang telah diubah ke dalam array of data
     private ANNModel annModel;      // model yang akan diklasifikasi dari training data dan akan digunakan untuk prediksi
@@ -71,7 +72,7 @@ public class MyANN extends Classifier{
         maxIteration = 500;
         threshold = 0.0;   
         topology = ONE_PERCEPTRON;
-        learningRule = SIMPLE_PERCEPTRON;
+        learningRule = PERCEPTRON_TRAINING_RULE;
         activationFunction = SIGMOID_FUNCTION;
         terminationCondition = TERMINATE_MSE;
         isInitialWeightSet = false;
@@ -170,10 +171,10 @@ public class MyANN extends Classifier{
 
     /**
      * mengatur learning rule yang akan digunakan
-     * untuk topologi 1perceptron
-     * (default) SIMPLE_PERCEPTRON = 1perceptron biasa
-     * BATCH_GRADIENT_DESCENT = batch gradient descent
-     * DELTA_RULE = delta rule
+ untuk topologi 1perceptron
+ (default) PERCEPTRON_TRAINING_RULE = 1perceptron biasa
+ BATCH_GRADIENT_DESCENT = batch gradient descent
+ DELTA_RULE = delta rule
      * @param learningRule the learningRule to set
      */
     public void setLearningRule(char learningRule) {
@@ -431,11 +432,11 @@ public class MyANN extends Classifier{
         
         // jalankan algoritma
         boolean stop = false;
-        int iteration = 0;
+        iteration = 0;
         do{        
             if (topology == ONE_PERCEPTRON) {
                 switch(learningRule) {
-                    case SIMPLE_PERCEPTRON:
+                    case PERCEPTRON_TRAINING_RULE:
                         annModel.perceptronTrainingRule();
                         break;
                     case BATCH_GRADIENT_DESCENT:
@@ -467,9 +468,6 @@ public class MyANN extends Classifier{
                     break;
             }
         }while(!stop);
-        
-        //debug
-        System.out.println("error: "+annModel.error);
     }
     
     /**
@@ -550,6 +548,7 @@ public class MyANN extends Classifier{
      * @param instances data yang akan diuji
      * @param numFold
      * @param rand 
+     * @return confusion matrix
      */
     public int[][] crossValidation(Instances instances, int numFold, Random rand) {
         int[][] totalResult = null;
@@ -582,6 +581,60 @@ public class MyANN extends Classifier{
         }
         
         return totalResult;
+    }
+    
+    /**
+     * menuliskan error dan iterasi terakhir dari klasifikasi
+     */
+    public void printSummary() {
+        System.out.println("error: "+annModel.error);
+        System.out.println("iteration: "+iteration);
+    }
+    
+    /**
+     * menuliskan setting dari model
+     */
+    public void printSetting() {
+        System.out.println("activation function: "+paramToString(activationFunction));
+        System.out.println("terminate condition: "+paramToString(terminationCondition));
+        System.out.println("learning rule: "+paramToString(learningRule));
+        System.out.println("topology: "+paramToString(topology));
+        System.out.println("delta MSE: "+deltaMSE);
+        System.out.println("max iteration: "+maxIteration);
+        System.out.println("learning rate: "+learningRate);
+        System.out.println("momentum: "+momentum);
+        System.out.println("hidden layer: "+(nbLayers.length - 2));
+    }
+    
+    private String paramToString(char param) {
+        String retval = "null";
+        switch(param) {
+            case 1: retval = "one perceptron";
+                break;
+            case 2: retval = "multi layer perceptron";
+                break;
+            case 3: retval = "perceptron training rule";
+                break;
+            case 4: retval = "batch gradient descent";
+                break;
+            case 5: retval = "delta rule";
+                break;
+            case 6: retval = "step function";
+                break;
+            case 7: retval = "sign function";
+                break;
+            case 8: retval = "sigmoid perceptron";
+                break;
+            case 9: retval = "terminate using MSE";
+                break;
+            case 10: retval = "terminate by iteration";
+                break;
+            case 11: retval = "terminate both way";
+                break;
+            default:
+                break;
+        }
+        return retval;
     }
     
     ///////////////////////////////////////////////////////
