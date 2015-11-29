@@ -379,7 +379,8 @@ public class MyANN extends Classifier{
         }
         
         // masukin setiap bobot dengan angka random
-        Random rand = new Random(System.currentTimeMillis());
+        //Random rand = new Random(System.currentTimeMillis());
+        Random rand = new Random(1);
         // masukin bobot bias
         int j = 0;
         Map<Integer, Map<Node, Double>> biasesWeight = new HashMap<>();
@@ -440,6 +441,14 @@ public class MyANN extends Classifier{
                 annModel.setActivationFunction(ANNModel.SIGMOID);
                 break;
             case SIGN_FUNCTION:
+                // ubah target jadi -1 dan 1
+                for (Data d : datas) {
+                    for(Double dd : d.target) {
+                        if (dd == 0.0) {
+                            dd = -1.0;
+                        }
+                    }
+                }
                 annModel.setActivationFunction(ANNModel.SIGN);
                 break;
             case STEP_FUNCTION:
@@ -450,6 +459,9 @@ public class MyANN extends Classifier{
         }
         if (learningRule == BATCH_GRADIENT_DESCENT || learningRule == DELTA_RULE)
             annModel.setActivationFunction(ANNModel.NO_FUNC);
+        if (topology == MULTILAYER_PERCEPTRON) {
+            annModel.setActivationFunction(ANNModel.SIGMOID);
+        }
         annModel.setThreshold(threshold);
         
         // jalankan algoritma
@@ -492,8 +504,8 @@ public class MyANN extends Classifier{
                 default:
                     break;
             }
+//            System.out.println(annModel.error);
         }while(!stop);
-        
 //        annModel.print();
     }
     

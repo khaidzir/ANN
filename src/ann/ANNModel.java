@@ -321,7 +321,7 @@ public class ANNModel {
             }
         }
         error /= 2;
-        System.out.println("Error sekarang : " + error);
+//        System.out.println("Error sekarang : " + error);
     }
     
     public void batchGradienDescent() {
@@ -433,7 +433,7 @@ public class ANNModel {
             }
         }
         error /= 2;
-        System.out.println("Error sekarang : " + error);
+//        System.out.println("Error sekarang : " + error);
     }
     
     
