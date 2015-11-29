@@ -220,10 +220,8 @@ public class Main {
         myAnn.setThreshold(momentum);
         myAnn.setTopology(topology);
         
-        int[] nbLayer = null;
-        if(nbHidden == 0) {
-            nbLayer = new int[2];
-        } else {
+        int[] nbLayer = new int[2];
+        if(nbHidden != 0) {
             nbLayer = new int[2 + nbHidden];
             for (int j = 1; j < nbLayer.length - 1; j++) {
                 nbLayer[j] = hiddenConf[j-1];
@@ -234,9 +232,11 @@ public class Main {
             nbLayer[nbLayer.length - 1] = trainData.classAttribute().numValues();
         else
             nbLayer[nbLayer.length - 1] = 1;
+        
         myAnn.setNbLayers(nbLayer);
         
         // debug: cek kondigurasi
+        System.out.println("training data: "+trainPath);
         System.out.println("settings:");
         myAnn.printSetting();
         System.out.println("");
@@ -255,12 +255,14 @@ public class Main {
         
         System.out.print("evaluating ");
         int[][] result = null;
+        int nbData = trainData.numInstances();
         if (isCV) {
             System.out.println("using "+numFolds+"-folds cross validation");
             result = myAnn.crossValidation(trainData, numFolds, new Random(1));
         } else if (isEvaluate) {
             System.out.println("using testData: "+testPath);
             result = myAnn.evaluate(testData);
+            nbData = testData.numInstances();
         } else {
             System.out.println("using trainData");
             result = myAnn.evaluate(trainData);
@@ -268,13 +270,51 @@ public class Main {
         System.out.println("");
         
         System.out.println("result:");
-        for (int [] r : result) {
-            for (int r1 : r) {
-                System.out.print(r1+", ");
+
+        
+        double accuracy = 0.0;      // a+d/total
+        double[] precision = new double[result.length];     // a/a+c;   prec[i] = M[i,i] / sumj(M[j,i])
+        double[] recall = new double[result[0].length];        // a/a+b;   rec[i] = M[i,i] / sumj(M[i,j])
+
+        for (int i = 0; i < result.length; i++) {
+            for (int j = 0; j < result[0].length; j++) {
+                System.out.print(result[i][j] + " ");
+                if (i==j) {
+                    accuracy += result[i][j];
+                }
             }
             System.out.println("");
         }
-        
+
+        // precision
+        for(int i = 0; i < precision.length; i++) {
+            double sum = 0.0;
+            for (int j = 0; j < result[0].length; j++) {
+                sum += result[j][i];
+            }
+            precision[i] = result[i][i] / sum;
+        }
+
+        // recall
+        for(int i = 0; i < recall.length; i++) {
+            double sum = 0.0;
+            for (int j = 0; j < result[0].length; j++) {
+                sum += result[i][j];
+            }
+            recall[i] = result[i][i] / sum;
+        }
+
+        accuracy /= nbData;
+        System.out.println("");
+        System.out.println("accuracy: "+accuracy);
+        System.out.println("precision: ");
+        for(double p : precision) {
+            System.out.println(p);
+        }
+        System.out.println("");
+        System.out.println("recall: ");
+        for (double r : recall) System.out.println(r);
+        System.out.println("");
         System.out.println("-------------------------------------------------");
         
         if (predictPath != null) {

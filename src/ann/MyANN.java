@@ -433,6 +433,7 @@ public class MyANN extends Classifier{
         // jalankan algoritma
         boolean stop = false;
         iteration = 0;
+        
         do{        
             if (topology == ONE_PERCEPTRON) {
                 switch(learningRule) {
@@ -468,6 +469,8 @@ public class MyANN extends Classifier{
                     break;
             }
         }while(!stop);
+        
+        //annModel.print();
     }
     
     /**
@@ -604,6 +607,11 @@ public class MyANN extends Classifier{
         System.out.println("learning rate: "+learningRate);
         System.out.println("momentum: "+momentum);
         System.out.println("hidden layer: "+(nbLayers.length - 2));
+        System.out.print("hidden layer's nodes:");
+        for(int i = 1; i < nbLayers.length - 1; i++) {
+            System.out.print(nbLayers[i]+" ");
+        }
+        System.out.println("");
     }
     
     private String paramToString(char param) {
