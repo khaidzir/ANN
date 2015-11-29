@@ -16,24 +16,25 @@ import java.util.Map;
 public class ANNModel {
     
     /* KODE FUNGSI AKTIVASI */
-    public static final int STEP = 0, SIGN = 1, SIGMOID = 2;
+    public static final int NO_FUNC = 0, STEP = 1, SIGN = 2, SIGMOID = 3 ;
     
+    // Atribut - atribut utama model
     private ArrayList<ArrayList<Node>> layers;
     private Map<Node, Map<Node, Double>> weightMap;
     private ArrayList<Double> biases;
     private Map<Integer, Map<Node, Double>> biasesWeight;
-    
-    private double[][] tempTable, errorTable;
+    private ArrayList<Data> trainingSet;
     private double learningRate;
     private int activationFuncCode;
+    private double threshold;   // threshold buat fungsi step atau sign
+    private double momentum;
     
-    // threshold buat fungsi step atau sign
-    private double threshold;
-    
+    // Atribut - atribut bantuan
     public double error;
-    
-    
-    private ArrayList<Data> trainingSet;
+    private double[][] tempTable, errorTable;
+    // Map - map buat menyimpan perubahan bobot
+    private Map<Node, Map<Node, Double>> mapDWeight;
+    private Map<Integer, Map<Node, Double>> mapDBias;
     
     public ANNModel(ArrayList<ArrayList<Node>> layers, Map<Node, Map<Node, Double>> weight, 
                     ArrayList<Double> bias, Map<Integer, Map<Node, Double>> bWeight) {
@@ -47,6 +48,28 @@ public class ANNModel {
         for(int i=1; i<layers.size(); i++) {
             tempTable[i-1] = new double[layers.get(i).size()];
             errorTable[i-1] = new double[layers.get(i).size()];
+        }
+        activationFuncCode = NO_FUNC;
+        momentum = 0.0;
+        
+        // Map buat nyimpan delta weight kumulatif
+        mapDWeight = new HashMap<>();
+        for (Node n1 : weightMap.keySet()) {
+            Map<Node, Double> map = new HashMap<>();
+            for(Node n2 : weightMap.get(n1).keySet()) {                
+                map.put(n2, 0.0);
+            }
+            mapDWeight.put(n1, map);
+        }
+        
+        // Map sementara buat nyimpan delta weight bias kumulatif
+        mapDBias = new HashMap<>();        
+        for (Integer n1 : biasesWeight.keySet()) {
+            Map<Node, Double> map = new HashMap<>();
+            for(Node n2 : biasesWeight.get(n1).keySet()) {                
+                map.put(n2, 0.0);
+            }
+            mapDBias.put(n1, map);
         }
     }
     
@@ -63,6 +86,9 @@ public class ANNModel {
     public void setThreshold(double t) {
         this.threshold = t;
     }
+    public void setMomentum(double alpha) {
+        this.momentum = alpha;
+    }
     
     /* FUNGSI AKTIVASI */
     private double stepFunc(double input) {
@@ -77,6 +103,7 @@ public class ANNModel {
         return 1.0/(1.0+Math.exp(-input));
     }
     
+    /* Menghitung input ke dalam model */
     public ArrayList<Double> calculate(ArrayList<Double> input) {
         feedForward(input);
         ArrayList<Double> output = new ArrayList<>();
@@ -86,6 +113,7 @@ public class ANNModel {
         return output;
     }
     
+    /* Feed forward untuk learning */
     private void feedForward(ArrayList<Double> input) {
         // Input pertama
         for(int i=0; i<layers.get(1).size(); i++) {
@@ -126,38 +154,33 @@ public class ANNModel {
         }
     }
     
-    private void feedForwardWithoutActivationFunction(ArrayList<Double> input) {
-            // Input pertama
-        for(int i=0; i<layers.get(1).size(); i++) {
-            tempTable[0][i] = 0.0;
-            for(int j=0; j<layers.get(0).size(); j++) {
-//                System.out.println(input.get(j)+" * "+ weightMap.get(layers.get(0).get(j)).get(layers.get(1).get(i)));
-                tempTable[0][i] += input.get(j) * weightMap.get(layers.get(0).get(j)).get(layers.get(1).get(i));
+    /* Reset semua delta weight yang disimpan */
+    public void resetDeltaWeight() {
+        // Reset map delta weight
+        for(int i=0; i<layers.size()-1; i++) {
+            for(int j=0; j<layers.get(i).size(); j++) {
+                for(int k=0; k<layers.get(i+1).size(); k++) {
+                    mapDWeight.get(layers.get(i).get(j)).replace(layers.get(i+1).get(k), 0.0);
+                }
             }
-//            System.out.println(biases.get(0)+" * "+ biasesWeight.get(0).get(layers.get(1).get(i)));
-            tempTable[0][i] += biases.get(0)*biasesWeight.get(0).get(layers.get(1).get(i));
-//            System.out.println("Hasil 1 : " + tempTable[0][i]);
-//            System.out.println("----");            
         }
         
-        for(int k=1; k<layers.size()-1; k++) {
-            for(int i=0; i<layers.get(1).size(); i++) {
-                tempTable[k][i] = 0.0;
-                for(int j=0; j<layers.get(k).size(); j++) {   
-//                    System.out.println(tempTable[k-1][j]+" * "+ weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i)));
-                    tempTable[k][i] += tempTable[k-1][j] * weightMap.get(layers.get(k).get(j)).get(layers.get(k+1).get(i));
-                }
-//                System.out.println(biases.get(k)+" * "+ biasesWeight.get(k).get(layers.get(k+1).get(i)));
-                tempTable[k][i] += biases.get(k)*biasesWeight.get(k).get(layers.get(k+1).get(i));
-//                System.out.println("Hasil 1 : " + tempTable[k][i]);
-//                System.out.println("----");
+        // Reset map delta bias
+        for(int i=0; i<layers.size()-1; i++) {
+            for(int j=0; j<layers.get(i+1).size(); j++) {
+                mapDBias.get(i).replace(layers.get(i+1).get(j), 0.0);
             }
         }
     }
     
+    /* MULTI LAYER PERCEPTRON */
+    /* Perhatian! Pastikan mapDWeight & mapDBias semua bernilai 0 sebelum memanggil ini ! 
+       (Untuk memastikan, tinggal panggil resetDeltaWeight()) */
     public void backProp() {
-        double output, dW;
+        double output, dW, weight;
         error = 0.0;
+        
+        // Semua data set
         for(Data d : trainingSet) {
             feedForward(d.input);
             
@@ -189,19 +212,27 @@ public class ANNModel {
             // Update weight input            
             for(int i=0; i<layers.get(0).size(); i++) {
                 for(int j=0; j<layers.get(1).size(); j++) {
-                    dW = learningRate * errorTable[0][j] * d.input.get(i);
-                    output = weightMap.get(layers.get(0).get(i)).get(layers.get(1).get(j));
-                    weightMap.get(layers.get(0).get(i)).replace(layers.get(1).get(j), output+dW);
+//                    System.out.println("PrevDWeight = " + mapDWeight.get(layers.get(0).get(i)).get(layers.get(1).get(j)));
+                    dW = ( learningRate * errorTable[0][j] * d.input.get(i) ) + 
+                         ( momentum * mapDWeight.get(layers.get(0).get(i)).get(layers.get(1).get(j)) );
+                    weight = weightMap.get(layers.get(0).get(i)).get(layers.get(1).get(j));
+                    weightMap.get(layers.get(0).get(i)).replace(layers.get(1).get(j), weight+dW);
+                    mapDWeight.get(layers.get(0).get(i)).replace(layers.get(1).get(j), dW);
+//                    System.out.println("DW : " + dW);
                 }
             }
             
             // Update weight sisanya
             for(int k=1; k<layers.size()-1; k++) {
                 for(int i=0; i<layers.get(k).size(); i++) {
-                    for(int j=0; j<layers.get(k+1).size(); j++) {
-                        dW = learningRate * errorTable[k][j] * tempTable[k-1][j];
-                        output = weightMap.get(layers.get(k).get(i)).get(layers.get(k+1).get(j));
-                        weightMap.get(layers.get(k).get(i)).replace(layers.get(k+1).get(j), output+dW);
+                    for(int j=0; j<layers.get(k+1).size(); j++) {                        
+//                        System.out.println("PrevDWeight = " + mapDWeight.get(layers.get(k).get(i)).get(layers.get(k+1).get(j)));
+                        dW = ( learningRate * errorTable[k][j] * tempTable[k-1][j] ) + 
+                             ( momentum * mapDWeight.get(layers.get(k).get(i)).get(layers.get(k+1).get(j)) );
+                        weight = weightMap.get(layers.get(k).get(i)).get(layers.get(k+1).get(j));
+                        weightMap.get(layers.get(k).get(i)).replace(layers.get(k+1).get(j), weight+dW);
+                        mapDWeight.get(layers.get(k).get(i)).replace(layers.get(k+1).get(j), dW);
+//                        System.out.println("DW : " + dW);
                     }
                 }
             }
@@ -209,9 +240,11 @@ public class ANNModel {
             // Update weight bias
             for(int k=0; k<layers.size()-1; k++) {
                 for(int j=0; j<layers.get(k+1).size(); j++) {
-                    dW = learningRate * errorTable[k][j] * biases.get(k);
+                    dW = ( learningRate * errorTable[k][j] * biases.get(k) ) + 
+                         ( momentum * mapDBias.get(k).get(layers.get(k+1).get(j)) );
                     output = biasesWeight.get(k).get(layers.get(k+1).get(j));
                     biasesWeight.get(k).replace(layers.get(k+1).get(j), output+dW);
+                    mapDBias.get(k).replace(layers.get(k+1).get(j), dW);
                 }
             }
         }
@@ -219,6 +252,7 @@ public class ANNModel {
 //        System.out.println("Error sekarang : " + error);
     }
     
+    /* SINGLE LAYER PERCEPTRON */
     public void perceptronTrainingRule() {
         double output, dW;
         error = 0.0;
@@ -264,25 +298,21 @@ public class ANNModel {
         double output, dW;
         error = 0.0;
         
-        // Map sementara buat nyimpan delta weight kumulatif
-        Map<Node, Map<Node, Double>> mapDWeight = new HashMap<>();
-        for (Node n1 : weightMap.keySet()) {
-            Map<Node, Double> map = new HashMap<>();
-            for(Node n2 : weightMap.get(n1).keySet()) {                
-                map.put(n2, 0.0);
+        // Reset map delta weight        
+        for(int i=0; i<layers.get(0).size(); i++) {
+            for(int j=0; j<layers.get(1).size(); i++) {
+                mapDWeight.get(layers.get(0).get(i)).replace(layers.get(1).get(j), 0.0);
             }
-            mapDWeight.put(n1, map);
         }
         
-        // Map sementara buat nyimpan delta weight bias kumulatif
-        Map<Node, Double> mapDBias = new HashMap<>();        
-        for(Node n : biasesWeight.get(0).keySet()) {                
-            mapDBias.put(n, 0.0);
+        // Reset map delta bias
+        for(int i=0; i<layers.get(1).size(); i++) {
+            mapDBias.get(0).replace(layers.get(1).get(i), 0.0);
         }
         
         // Semua data set
         for(Data d : trainingSet) {
-            feedForwardWithoutActivationFunction(d.input);
+            feedForward(d.input);
             
             // Hitung error
             for(int i=0; i<tempTable[tempTable.length-1].length; i++) {
@@ -308,8 +338,8 @@ public class ANNModel {
                 dW = learningRate * (d.target.get(j)-output) * biases.get(0);
                 if(activationFuncCode == SIGMOID)
                     dW *= output * (1-output);
-                output = mapDBias.get(layers.get(1).get(j));
-                mapDBias.replace(layers.get(1).get(j), output+dW);
+                output = mapDBias.get(0).get(layers.get(1).get(j));
+                mapDBias.get(0).replace(layers.get(1).get(j), output+dW);
             }
         }
             
@@ -324,7 +354,7 @@ public class ANNModel {
 
         // Update weight bias
         for(int j=0; j<layers.get(1).size(); j++) {
-            dW = mapDBias.get(layers.get(1).get(j));
+            dW = mapDBias.get(0).get(layers.get(1).get(j));
             output = biasesWeight.get(0).get(layers.get(1).get(j));
             biasesWeight.get(0).replace(layers.get(1).get(j), output+dW);
         }
@@ -337,7 +367,7 @@ public class ANNModel {
         double output, dW;
         error = 0.0;
         for(Data d : trainingSet) {
-            feedForwardWithoutActivationFunction(d.input);
+            feedForward(d.input);
             
             for(int i=0; i<tempTable[0].length; i++) {
                 output = (d.target.get(i)-tempTable[tempTable.length-1][i]);
@@ -374,6 +404,7 @@ public class ANNModel {
         //System.out.println("Error sekarang : " + error);
     }
     
+    
     public void print() {
         //////////////////////////////////////////////////////////////////////
         System.out.println("Node : ");
@@ -394,7 +425,6 @@ public class ANNModel {
         //////////////////////////////////////////////////////////////////////
     }
     
-
     
     public static void main(String[] args) {
         coba2();
@@ -606,6 +636,7 @@ public class ANNModel {
         annModel.setDataSet(trainingSet);
         annModel.setLearningRate(0.1);
         annModel.setActivationFunction(ANNModel.SIGMOID);
+        annModel.setMomentum(0.5);
         annModel.setThreshold(0.0);
         System.out.println("Awal : ");
         annModel.print();
@@ -614,7 +645,7 @@ public class ANNModel {
         int counter = 0;
         do {
             annModel.backProp();
-            annModel.print();
+//            annModel.print();
             counter++;
         } while(annModel.error > 0.001);
         System.out.println("\n--Jumlah Iterasi : " + counter);
