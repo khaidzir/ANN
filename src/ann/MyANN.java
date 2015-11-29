@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import weka.classifiers.Classifier;
 import weka.core.Capabilities;
 import weka.core.Capabilities.Capability;
@@ -61,6 +63,36 @@ public class MyANN extends Classifier{
     
     private ArrayList<Data> datas;  // instances yang telah diubah ke dalam array of data
     private ANNModel annModel;      // model yang akan diklasifikasi dari training data dan akan digunakan untuk prediksi
+
+    MyANN() {
+        learningRate = 0.3;
+        momentum = 0.2;
+        deltaMSE = 0.01;   
+        maxIteration = 500;
+        threshold = 0.0;   
+        topology = ONE_PERCEPTRON;
+        learningRule = SIMPLE_PERCEPTRON;
+        activationFunction = SIGMOID_FUNCTION;
+        terminationCondition = TERMINATE_MSE;
+        isInitialWeightSet = false;
+    }
+    
+    MyANN(MyANN c) {
+        learningRate = c.learningRate;
+        momentum = c.momentum;
+        deltaMSE = c.deltaMSE;
+        maxIteration = c.maxIteration;
+        threshold = c.threshold;
+        topology = c.topology;
+        learningRule = c.learningRule;
+        activationFunction = c.activationFunction;
+        terminationCondition = c.terminationCondition;
+        isInitialWeightSet = c.isInitialWeightSet;
+        nbLayers = c.nbLayers;
+        weights = c.weights;
+        datas = c.datas;
+        annModel = c.annModel;
+    }
 
     ////////////////////////////////
     ////     Setter-Getter      ////
@@ -290,7 +322,8 @@ public class MyANN extends Classifier{
         
         // cek apakah sesuai dengan data input
         getCapabilities().testWithFail(instances);
-        // buang semua missing class
+        // copy data dan buang semua missing class
+        instances = new Instances(instances);
         instances.deleteWithMissingClass();
         
         // ubah instances ke data
@@ -338,7 +371,7 @@ public class MyANN extends Classifier{
         }
         
         // masukin setiap bobot dengan angka random
-        Random rand = new Random();
+        Random rand = new Random(System.currentTimeMillis());
         // masukin bobot bias
         int j = 0;
         Map<Integer, Map<Node, Double>> biasesWeight = new HashMap<>();
@@ -398,7 +431,7 @@ public class MyANN extends Classifier{
         // jalankan algoritma
         boolean stop = false;
         int iteration = 0;
-        do{
+        do{        
             if (topology == ONE_PERCEPTRON) {
                 switch(learningRule) {
                     case SIMPLE_PERCEPTRON:
@@ -434,6 +467,8 @@ public class MyANN extends Classifier{
             }
         }while(!stop);
         
+        //debug
+        annModel.print();
     }
     
     /**
@@ -455,6 +490,97 @@ public class MyANN extends Classifier{
             }
         }
         return target;
+    }
+    
+    /**
+     * mendapatkan index dari value class jika class adalah nominal
+     * @param probability probabilitas dari setiap kelas
+     * @return index kelas, jika tidak ada, maka mengembalikan -1
+     */
+    public int predictClassIndex(double[] probability)  {
+        double max = Double.NEGATIVE_INFINITY;
+        int idx = -1;
+        for (int i = 0; i < probability.length; i++) {
+            if (probability[i] > max) {
+                idx = i;
+                max = probability[i];
+            }
+        }
+
+        return idx;
+    }
+    
+    /**
+     * mengevaluasi model dengan testSet dan mengembalikan Confusion Matrix
+     * buildClassifier harus dipanggil terlebih dahulu
+     * @param testSet testSet untuk menguji model
+     * @return confusion Matrix, nominal = matrix persegi berukuran NxN dengan
+     * N adalah jumlah kelas. numerik = matrix 1x2 dengan elemen pertama adalah 
+     * jumlah prediksi yang benar dan elemen kedua adalah jumlah prediksi yang salah
+     */
+    public int[][] evaluate(Instances testSet) {
+        int[][] confusionMatrix;
+        if (testSet.classAttribute().isNominal()) {
+            confusionMatrix = new int[testSet.classAttribute().numValues()][testSet.classAttribute().numValues()];
+        } else {
+            confusionMatrix= new int[1][2];
+        }
+        for (int i = 0; i < testSet.numInstances(); i++) {
+            try {
+                double[] prob = distributionForInstance(testSet.instance(i));
+                if (testSet.classAttribute().isNominal()) {
+                    int idx = predictClassIndex(prob);
+                    confusionMatrix[(int)testSet.instance(i).classValue()][idx]++;
+                } else {
+                    if (Math.abs(prob[0] - testSet.instance(i).classValue()) <= 0.001)
+                        confusionMatrix[0][0]++;
+                    else
+                        confusionMatrix[0][1]++;
+                }
+            } catch (Exception ex) {
+                Logger.getLogger(MyANN.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return confusionMatrix;
+    }
+    
+    /**
+     * Mengevaluasi model dengan membagi instances menjadi trainSet dan testSet sebanyak numFold
+     * @param instances data yang akan diuji
+     * @param numFold
+     * @param rand 
+     */
+    public int[][] crossValidation(Instances instances, int numFold, Random rand) {
+        int[][] totalResult = null;
+        instances = new Instances(instances);
+        instances.randomize(rand);
+        if (instances.classAttribute().isNominal()) {
+            instances.stratify(numFold);
+        }
+        for (int i = 0; i < numFold; i++) {
+            try {
+                // membagi instance berdasarkan jumlah fold
+                Instances train = instances.trainCV(numFold, i, rand);
+                Instances test = instances.testCV(numFold, i);
+                MyANN cc = new MyANN(this);
+                cc.buildClassifier(train);
+                int[][] result = cc.evaluate(test);
+                if (i==0) {
+                    totalResult = cc.evaluate(test);
+                } else {
+                    result = cc.evaluate(test);
+                    for(int j = 0; j < totalResult.length; j++) {
+                        for (int k = 0; k < totalResult[0].length; k++) {
+                            totalResult[j][k] += result[j][k];
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                Logger.getLogger(MyANN.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+        return totalResult;
     }
     
     ///////////////////////////////////////////////////////
