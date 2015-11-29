@@ -38,9 +38,10 @@ public class Main {
             
             WeightParser wp = new WeightParser("/media/yusuf/5652859E52858389/Data/Kuliah/Semester 7/ML/khaidzir_myANN/initial.weight");
             MyANN myANN = new MyANN();
-            int[] nbLayers = {4, 2, 2};
+            int[] nbLayers = {4, 3, 2};
             myANN.setNbLayers(nbLayers);
             myANN.setDeltaMSE(0.001);
+            //myANN.setMomentum(0.2);
             myANN.setLearningRate(0.1);
             myANN.setTopology(MyANN.MULTILAYER_PERCEPTRON);
             myANN.setLearningRule(MyANN.SIMPLE_PERCEPTRON);

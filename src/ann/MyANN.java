@@ -413,6 +413,7 @@ public class MyANN extends Classifier{
         // set konfigurasi awal model
         annModel.setDataSet(datas);
         annModel.setLearningRate(learningRate);
+        annModel.setMomentum(momentum);
         switch (activationFunction) {
             case SIGMOID_FUNCTION:
                 annModel.setActivationFunction(ANNModel.SIGMOID);
@@ -468,7 +469,7 @@ public class MyANN extends Classifier{
         }while(!stop);
         
         //debug
-        annModel.print();
+        System.out.println("error: "+annModel.error);
     }
     
     /**
